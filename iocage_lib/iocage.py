@@ -488,7 +488,8 @@ class IOCage:
                clone=None,
                skip_batch=False,
                thickconfig=False,
-               clone_basejail=False):
+               clone_basejail=False,
+               force=False):
         """Creates the jail dataset"""
         count = 0 if count == 1 and not skip_batch else count
 
@@ -565,7 +566,7 @@ class IOCage:
 
             status, _ = self.list("jid", uuid=clone_uuid)
 
-            if status:
+            if status and not force:
                 ioc_common.logit(
                     {
                         "level":

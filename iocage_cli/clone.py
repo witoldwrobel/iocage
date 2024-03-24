@@ -59,7 +59,9 @@ def validate_count(ctx, param, value):
 @click.option('--thickjail', '-T', is_flag=True, default=False,
               help='Set the new jail type to a thickjail. Thickjails'
                    ' are copied (not cloned) from the specified target.')
-def cli(source, props, count, name, _uuid, thickjail, newmac):
+@click.option('--force', '-f', default=False, is_flag=True,
+              help='Ignore that source jail is running')
+def cli(source, props, count, name, _uuid, thickjail, newmac, force):
     # At this point we don't care
     _uuid = name if name else _uuid
     props = list(props)
@@ -69,5 +71,5 @@ def cli(source, props, count, name, _uuid, thickjail, newmac):
             props.append(f'{p}_mac=none')
 
     ioc.IOCage(jail=source, skip_jails=True).create(
-        source, props, count, _uuid=_uuid, thickjail=thickjail, clone=True
+        source, props, count, _uuid=_uuid, thickjail=thickjail, clone=True, force=force
     )
