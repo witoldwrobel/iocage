@@ -778,6 +778,22 @@ class IOCage:
 
         return jail_list
 
+    def top(self):
+        uuid, _ = self.__check_jail_existence__()
+        status, jid = self.list("jid", uuid=uuid)
+        if not status:
+            ioc_common.logit(
+                {
+                    "level": "EXCEPTION",
+                    "message": f'{self.jail} is not running'
+                },
+                _callback=self.callback,
+                silent=self.silent)
+            return
+
+        command = ["top", "-J", jid]  # No need to run from jail
+        su.call(command)
+
     def exec_all(
         self, command, host_user='root', jail_user=None, console=False,
         start_jail=False, interactive=False, unjailed=False, msg_return=False
