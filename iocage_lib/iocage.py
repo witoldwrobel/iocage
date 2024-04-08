@@ -28,6 +28,7 @@ import json
 import operator
 import os
 import subprocess as su
+import time
 
 import iocage_lib.ioc_clean as ioc_clean
 import iocage_lib.ioc_common as ioc_common
@@ -793,6 +794,68 @@ class IOCage:
 
         command = ["top", "-J", jid]  # No need to run from jail
         su.call(command)
+
+    __stats_mappings = dict(
+        name='Name',
+        pcpu='CPU',
+        memoryuse='RES',
+        vmemoryuse='VIRT',
+        nthr='THREADS',
+        swapuse='SWAP',
+        readbps='READ BPS',
+        writebps='WRITE BPS',
+        readiops='READ IOPS',
+        writeiops='WRITE IOPS',
+        sent_bytes='SENT BYTES',
+        received_bytes='RECV BYTES',
+        sent_bps='SENT BITS/S',
+        recv_bps='RECV BITS/S',
+    )
+
+    def stats(self):
+
+        space = 13
+        header = ''.join(v.ljust(space) for (k, v) in self.__stats_mappings.items())
+        previous_stats = dict()
+
+        while True:
+            running_jails = ioc_common.get_running_jails()
+            stats = dict()
+
+            for jail in filter(lambda x: x, sorted(running_jails, key=lambda j: j.name)):
+                stats_list = filter(
+                    lambda x: x,
+                    ioc_common.checkoutput(['rctl', '-hu', f'jail:{jail.name}'], stderr=su.STDOUT).split('\n'))
+
+                interface_stats = ioc_common.get_jail_network_stats(jail.jid, jail.is_forwarding_packets)
+                previous_jail_stats = previous_stats.get(jail.name, dict())
+
+                timestamp = datetime.datetime.utcnow()
+                sent_bytes = interface_stats.get('sent-bytes', 0)
+                sent_bytes_prev = previous_jail_stats.get('sent_bytes_num', sent_bytes + 1)
+                received_bytes = interface_stats.get('received-bytes', 0)
+                received_bytes_prev = previous_jail_stats.get('received_bytes_num', received_bytes + 1)
+
+                jail_stats = dict(map(lambda x: x.split('='), stats_list))
+                jail_stats['timestamp'] = timestamp
+                jail_stats['name'] = jail.name.replace('ioc-', '')
+                jail_stats['sent_bytes'] = ioc_common.convert_bitrate(sent_bytes)
+                jail_stats['received_bytes'] = ioc_common.convert_bitrate(received_bytes)
+                jail_stats['sent_bytes_num'] = sent_bytes
+                jail_stats['received_bytes_num'] = received_bytes
+                jail_stats['sent_bps'] = ioc_common.convert_bitrate((sent_bytes - sent_bytes_prev) * 8)
+                jail_stats['recv_bps'] = ioc_common.convert_bitrate((received_bytes - received_bytes_prev) * 8)
+
+                stats[jail.name] = jail_stats
+            os.system('clear')
+
+            print(header)
+            for _, jail_stats in stats.items():
+                values = ''.join(str(jail_stats[stat_name]).ljust(space) for stat_name in self.__stats_mappings.keys())
+                print(values)
+
+            previous_stats = stats
+            time.sleep(1)
 
     def exec_all(
         self, command, host_user='root', jail_user=None, console=False,

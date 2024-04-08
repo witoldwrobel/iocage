@@ -1297,3 +1297,74 @@ def tmp_dataset_checks(_callback, silent):
                 _callback=_callback,
                 silent=silent
             )
+
+
+class JailDetails:
+    def __init__(self, details: str):
+        attrs = details.split(' ')
+        self.jid = int(attrs[0])
+        self.name = attrs[1]
+        self.is_forwarding_packets = False
+
+
+def get_running_jails():
+    jails = []
+    for j in filter(lambda x: x, checkoutput(['jls', 'jid', 'name'], stderr=su.STDOUT).split('\n')):
+        jail = JailDetails(j)
+        jail.is_forwarding_packets = is_forwarding_packets(jail.jid)
+        jails.append(jail)
+
+    return jails
+
+
+def is_forwarding_packets(jid: int):
+    try:
+        result = json.loads(
+            checkoutput(['netstat', '-s', '-f', 'inet', '-p', 'ip', '-j', str(jid), '--libxo', 'json']))
+    except su.CalledProcessError:
+        return False
+
+    return (result
+            .get('statistics', dict())
+            .get('ip', dict())
+            .get('forwarded-packets', 0) > 0)
+
+
+def get_jail_network_stats(jid: int, is_forwarding: bool):
+
+    try:
+        if not is_forwarding:
+            result = json.loads(
+                checkoutput(['netstat', '-i', '-4', '-j', str(jid), '-n', '-b', '--libxo', 'json'], stderr=su.STDOUT))
+            stats = list(filter(lambda x: x['name'].startswith('epair'), result['statistics']['interface']))
+        else:
+            result = json.loads(
+                checkoutput(['netstat', '-I', f'vnet0.{jid}', '-p', 'tcp', '-d', '-b', '--libxo', 'json'], stderr=su.STDOUT))
+            stats = result['statistics']['interface']
+    except su.CalledProcessError:
+        stats = dict()
+
+    if_stats = stats[0] if len(stats) > 0 else dict()
+    return if_stats
+
+
+__suffixes = {
+    0: '',
+    1: 'k',
+    2: 'M',
+    3: 'G',
+    4: 'T',
+    5: 'P',
+}
+
+
+def convert_bitrate(bitrate: int):
+    if bitrate < 0:
+        return '-'
+
+    iterations = 0
+    while bitrate > 99990 and iterations <= 5:
+        iterations += 1
+        bitrate //= 1000
+
+    return f'{bitrate}{__suffixes[iterations]}'
