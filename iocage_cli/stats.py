@@ -27,7 +27,12 @@ import click
 import iocage_lib.iocage as ioc
 
 
-@click.command(name="top", help="Show the RCTL stats of running jails")
-def cli():
+@click.command(name="stats", help="Show the RCTL stats of running jails")
+@click.option(
+    '--delay', '-d',
+    default=3,
+    help='Refresh delay interval in seconds',
+)
+def cli(delay):
     """Allows a user to see RCTL stats of running jails."""
-    ioc.IOCage().stats()
+    ioc.IOCage().stats(delay)

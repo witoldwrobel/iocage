@@ -795,7 +795,7 @@ class IOCage:
         command = ["top", "-J", jid]  # No need to run from jail
         su.call(command)
 
-    __stats_mappings = dict(
+    _stats_mappings = dict(
         name='Name',
         pcpu='CPU',
         memoryuse='RES',
@@ -812,11 +812,13 @@ class IOCage:
         recv_bps='RECV BITS/S',
     )
 
-    def stats(self):
+    _columns_spacing = dict()
+
+    def stats(self, delay):
 
         space = 13
-        header = ''.join(v.ljust(space) for (k, v) in self.__stats_mappings.items())
         previous_stats = dict()
+        header = ''.join(v.ljust(self._columns_spacing.get(k, space)) for (k, v) in self._stats_mappings.items())
 
         while True:
             running_jails = ioc_common.get_running_jails()
@@ -847,15 +849,22 @@ class IOCage:
                 jail_stats['recv_bps'] = ioc_common.convert_bitrate((received_bytes - received_bytes_prev) * 8)
 
                 stats[jail.name] = jail_stats
+
+                if (name_len := len(jail_stats['name'])) > self._columns_spacing.get('name', space):
+                    self._columns_spacing['name'] = name_len + 3
+                    header = ''.join(v.ljust(self._columns_spacing.get(k, space)) for (k, v) in self._stats_mappings.items())
+
             os.system('clear')
 
             print(header)
             for _, jail_stats in stats.items():
-                values = ''.join(str(jail_stats[stat_name]).ljust(space) for stat_name in self.__stats_mappings.keys())
+                values = ''.join(
+                    str(jail_stats[stat_name]).ljust(self._columns_spacing.get(stat_name, space)) for stat_name in
+                    self._stats_mappings.keys())
                 print(values)
 
             previous_stats = stats
-            time.sleep(1)
+            time.sleep(delay)
 
     def exec_all(
         self, command, host_user='root', jail_user=None, console=False,
