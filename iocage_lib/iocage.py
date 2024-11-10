@@ -2264,3 +2264,43 @@ Remove the snapshot: ioc_upgrade_{_date} if everything is OK
                 },
                 _callback=self.callback, silent=self.silent
             )
+
+    def copy(self, src, dst):
+
+        uuid, path = self.__check_jail_existence__()
+
+        conf = ioc_json.IOCJson(path, silent=self.silent).json_get_value('all')
+
+        if ioc_common.check_truthy(conf['template']):
+            ioc_common.logit({
+                'level': 'EXCEPTION',
+                'message': f'Jail {self.jail} is a template'
+            })
+
+            return
+
+        src_type = 'directory' if os.path.isdir(src) else 'file'
+
+        if not os.path.exists(src):
+            ioc_common.logit({
+                'level': 'EXCEPTION',
+                'message': f"The source {src_type} '{src}' doesn't exist"
+            })
+
+            return
+
+        if '..' in dst:
+            ioc_common.logit({
+                'level': 'EXCEPTION',
+                'message': f"Target path cannot contain '..'"
+            })
+
+            return
+
+        dst_root = os.path.join(path, 'root')
+        dst_path = os.path.join(dst_root, dst.lstrip('/'))
+
+        try:
+            ioc_common.checkoutput(['cp', src, dst_path], stderr=su.PIPE)
+        except su.CalledProcessError as err:
+            raise RuntimeError(err.output.decode('utf-8').rstrip())

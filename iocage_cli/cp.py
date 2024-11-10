@@ -21,7 +21,7 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
 # IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
-"""stats module for the cli."""
+"""top module for the cli."""
 
 import click
 import iocage_lib.iocage as ioc
@@ -29,12 +29,10 @@ import iocage_lib.iocage as ioc
 __rootcmd__ = True
 
 
-@click.command(name="stats", help="Show the RCTL stats of running jails")
-@click.option(
-    '--delay', '-d',
-    default=3,
-    help='Refresh delay interval in seconds',
-)
-def cli(delay):
-    """Allows a user to see RCTL stats of running jails."""
-    ioc.IOCage().stats(delay)
+@click.command(name="cp", help="Copy a file into the jail")
+@click.argument("jail", required=True, nargs=1)
+@click.argument("src", required=True, nargs=1)
+@click.argument("dst", required=False, nargs=1)
+def cli(jail, src: str, dst: str):
+    """Allows a user to start top tool for selected jail."""
+    ioc.IOCage(jail=jail).copy(src=src, dst=dst)
