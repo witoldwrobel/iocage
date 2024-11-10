@@ -2265,7 +2265,7 @@ Remove the snapshot: ioc_upgrade_{_date} if everything is OK
                 _callback=self.callback, silent=self.silent
             )
 
-    def copy(self, src, dst):
+    def copy(self, src, dst, archive: bool):
 
         uuid, path = self.__check_jail_existence__()
 
@@ -2300,7 +2300,16 @@ Remove the snapshot: ioc_upgrade_{_date} if everything is OK
         dst_root = os.path.join(path, 'root')
         dst_path = os.path.join(dst_root, dst.lstrip('/'))
 
+        command = ['cp']
+
+        if archive:
+            command.append('-a')
+
+        command.extend([src, dst_path])
         try:
-            ioc_common.checkoutput(['cp', src, dst_path], stderr=su.PIPE)
-        except su.CalledProcessError as err:
-            raise RuntimeError(err.output.decode('utf-8').rstrip())
+            ioc_common.checkoutput(command, stderr=su.PIPE)
+        except su.CalledProcessError as e:
+            ioc_common.logit({
+                'level': 'EXCEPTION',
+                'message': f"Error copying {src_type}"
+            })

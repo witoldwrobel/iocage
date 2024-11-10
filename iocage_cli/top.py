@@ -27,7 +27,7 @@ import click
 import iocage_lib.iocage as ioc
 
 
-@click.command(name="top", help="Run the 'top' tool for selected jail")
+@click.command(name="top", help="Run the 'top' tool for selected jail.")
 @click.argument("jail", required=True, nargs=1)
 def cli(jail):
     """Allows a user to start top tool for selected jail."""
